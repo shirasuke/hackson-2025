@@ -75,11 +75,26 @@ export const GET: RequestHandler = async () => {
 			todayCarEmissions.reduce((sum, record) => sum + record.co2Emission, 0) +
 			todayAcEmissions.reduce((sum, record) => sum + record.co2Emission, 0);
 
-		// 一般的な月間平均排出量（kg-CO2/日）
-		// 参考値：一般的な世帯の1日あたりのCO2排出量
+		// 月ごとのエアコン標準CO2排出量（kg-CO2/日）- 北海道地域
+		const monthlyACEmissions: Record<number, number> = {
+			1: 5.8, // 1月: 暖房最大使用（厳寒期）
+			2: 5.5, // 2月: 暖房最大使用（厳寒期）
+			3: 4.2, // 3月: 暖房使用（残寒期）
+			4: 2.5, // 4月: 暖房少なめ
+			5: 1.0, // 5月: 暖房必要に応じて
+			6: 0.2, // 6月: ほぼ未使用
+			7: 0.8, // 7月: 冷房少なめ
+			8: 1.2, // 8月: 冷房使用（盛夏期）
+			9: 0.5, // 9月: 冷房必要に応じて
+			10: 1.5, // 10月: 暖房少なめ（初冬）
+			11: 3.5, // 11月: 暖房使用増加
+			12: 5.0 // 12月: 暖房多用（厳寒期）
+		};
+
+		// 一般的な排出量（kg-CO2/日）
 		const standardDailyEmission = {
 			car: 5.2, // 自動車による平均的な1日あたりのCO2排出量
-			ac: 2.8 // エアコンによる平均的な1日あたりのCO2排出量
+			ac: monthlyACEmissions[today.getMonth() + 1] // 現在の月のエアコン排出量
 		};
 		const monthlyAverageEmission = standardDailyEmission.car + standardDailyEmission.ac;
 
@@ -100,7 +115,8 @@ export const GET: RequestHandler = async () => {
 			comparisonPercentage,
 			activities,
 			monthlyTotalEmission,
-			standardDailyEmission // 標準値も返す
+			standardDailyEmission, // 標準値も返す
+			currentMonth: today.getMonth() + 1 // 現在の月も返す
 		});
 	} catch (error) {
 		console.error('Error fetching daily summary:', error);
