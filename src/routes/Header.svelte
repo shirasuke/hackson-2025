@@ -11,14 +11,14 @@
 			<li aria-current={page.url.pathname === '/' ? 'page' : undefined}>
 				<a href="/">Home</a>
 			</li>
-			<li aria-current={page.url.pathname === '/top' ? 'page' : undefined}>
-				<a href="/top">エアコン</a>
-			</li>
-			<li aria-current={page.url.pathname === '/about' ? 'page' : undefined}>
-				<a href="/about">雪かき</a>
+			<li aria-current={page.url.pathname === '/ac' ? 'page' : undefined}>
+				<a href="/ac">エアコン</a>
 			</li>
 			<li aria-current={page.url.pathname === '/car' ? 'page' : undefined}>
 				<a href="/car">自動車</a>
+			</li>
+			<li aria-current={page.url.pathname === '/about' ? 'page' : undefined}>
+				<a href="/about">雪かき</a>
 			</li>
 		</ul>
 		<svg viewBox="0 0 2 3" aria-hidden="true">

@@ -75,12 +75,13 @@ export const GET: RequestHandler = async () => {
 			todayCarEmissions.reduce((sum, record) => sum + record.co2Emission, 0) +
 			todayAcEmissions.reduce((sum, record) => sum + record.co2Emission, 0);
 
-		// 月間の平均排出量を計算
-		const daysInMonth = endOfMonth.getDate();
-		const monthlyTotalEmission =
-			monthlyCarEmissions.reduce((sum, record) => sum + record.co2Emission, 0) +
-			monthlyAcEmissions.reduce((sum, record) => sum + record.co2Emission, 0);
-		const monthlyAverageEmission = monthlyTotalEmission / daysInMonth;
+		// 一般的な月間平均排出量（kg-CO2/日）
+		// 参考値：一般的な世帯の1日あたりのCO2排出量
+		const standardDailyEmission = {
+			car: 5.2, // 自動車による平均的な1日あたりのCO2排出量
+			ac: 2.8 // エアコンによる平均的な1日あたりのCO2排出量
+		};
+		const monthlyAverageEmission = standardDailyEmission.car + standardDailyEmission.ac;
 
 		// 平均との差分（パーセンテージ）
 		const comparisonPercentage =
@@ -88,12 +89,18 @@ export const GET: RequestHandler = async () => {
 				? ((todayEmission - monthlyAverageEmission) / monthlyAverageEmission) * 100
 				: 0;
 
+		// 月間の合計排出量
+		const monthlyTotalEmission =
+			monthlyCarEmissions.reduce((sum, record) => sum + record.co2Emission, 0) +
+			monthlyAcEmissions.reduce((sum, record) => sum + record.co2Emission, 0);
+
 		return json({
 			todayEmission,
 			monthlyAverageEmission,
 			comparisonPercentage,
 			activities,
-			monthlyTotalEmission
+			monthlyTotalEmission,
+			standardDailyEmission // 標準値も返す
 		});
 	} catch (error) {
 		console.error('Error fetching daily summary:', error);

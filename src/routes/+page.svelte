@@ -21,6 +21,10 @@
 		emission: number;
 	}> = [];
 	let monthlyTotalEmission = 0;
+	let standardDailyEmission: {
+		car: number;
+		ac: number;
+	} | null = null;
 
 	async function fetchDailySummary() {
 		try {
@@ -32,6 +36,7 @@
 			comparisonPercentage = data.comparisonPercentage;
 			activities = data.activities;
 			monthlyTotalEmission = data.monthlyTotalEmission;
+			standardDailyEmission = data.standardDailyEmission;
 		} catch (e) {
 			console.error('Error fetching daily summary:', e);
 		}
@@ -89,16 +94,22 @@
 				<p class="emission-value">{todayEmission.toFixed(2)} kg-CO2</p>
 
 				<div class="comparison">
-					<h3>月間平均との比較</h3>
-					<p class="average">月間平均: {monthlyAverageEmission.toFixed(2)} kg-CO2/日</p>
+					<h3>一般的な排出量との比較</h3>
+					<p class="average">
+						一般的な1日あたりの排出量: {monthlyAverageEmission.toFixed(2)} kg-CO2/日
+					</p>
 					<div class="percentage {comparisonPercentage > 0 ? 'over' : 'under'}">
 						{#if comparisonPercentage > 0}
-							<span>平均より {comparisonPercentage.toFixed(1)}% 多い</span>
+							<span>一般的な排出量より {comparisonPercentage.toFixed(1)}% 多い</span>
 						{:else if comparisonPercentage < 0}
-							<span>平均より {Math.abs(comparisonPercentage).toFixed(1)}% 少ない</span>
+							<span>一般的な排出量より {Math.abs(comparisonPercentage).toFixed(1)}% 少ない</span>
 						{:else}
-							<span>平均と同じ</span>
+							<span>一般的な排出量と同じ</span>
 						{/if}
+					</div>
+					<div class="emission-details">
+						<p>自動車: {standardDailyEmission?.car.toFixed(2)} kg-CO2/日</p>
+						<p>エアコン: {standardDailyEmission?.ac.toFixed(2)} kg-CO2/日</p>
 					</div>
 				</div>
 
