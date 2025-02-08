@@ -2,66 +2,56 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-	// テストユーザーの作成
-	const user = await prisma.user.create({
-		data: {
-			username: 'testuser',
-			email: 'test@example.com',
-			passwordHash: 'dummy_hash'
+	// 既存のデータをクリア
+	await prisma.event.deleteMany({});
+
+	// イベントのモックデータを作成
+	const events = [
+		{
+			title: '冬の省エネ講座',
+			description:
+				'寒い冬を快適に過ごしながら、エネルギー消費を抑える方法を学びます。断熱対策や暖房の効率的な使用方法など、実践的なテクニックを紹介します。',
+			date: new Date('2024-02-20'),
+			location: '札幌市環境プラザ',
+			organizer: '札幌環境活動推進協議会',
+			contact: 'eco@example.com'
+		},
+		{
+			title: '雪かきボランティア募集',
+			description:
+				'高齢者世帯の雪かき支援を行います。地域コミュニティの助け合いを通じて、冬の生活をサポートしましょう。道具は主催者が用意します。',
+			date: new Date('2024-02-25'),
+			location: '札幌市北区北24条駅前広場',
+			organizer: '北区町内会連合会',
+			contact: 'volunteer@example.com'
+		},
+		{
+			title: 'エコドライブ講習会',
+			description:
+				'冬道での安全運転とCO2削減を両立するエコドライブのコツを、実践を交えて学びます。燃費向上テクニックも紹介します。',
+			date: new Date('2024-03-05'),
+			location: '札幌市自動車学校',
+			organizer: '北海道運輸局',
+			contact: 'drive@example.com'
+		},
+		{
+			title: '春の省エネ住宅見学会',
+			description:
+				'高断熱・高気密の省エネ住宅を見学できます。暖房費を大幅に削減しながら快適に暮らす工夫を、実際の住宅で体感してください。',
+			date: new Date('2024-03-15'),
+			location: '札幌市厚別区もみじ台',
+			organizer: '北海道住宅協会',
+			contact: 'house@example.com'
 		}
-	});
+	];
 
-	// 本日の日付を取得
-	const today = new Date();
-	const thisMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+	for (const event of events) {
+		await prisma.event.create({
+			data: event
+		});
+	}
 
-	// 雪かき活動のseedデータ
-	await prisma.snowRemovalRecord.create({
-		data: {
-			userId: user.id,
-			date: today,
-			area: 50.0,
-			snowDepth: 15.0,
-			timeSpent: 30,
-			co2Reduction: 1.2
-		}
-	});
-
-	// エアコン使用のseedデータ
-	await prisma.aCCO2Record.create({
-		data: {
-			userId: user.id,
-			date: today,
-			usageHours: 5.0,
-			powerConsumption: 0.8,
-			temperature: 25,
-			co2Emission: 1.8
-		}
-	});
-
-	// 自動車使用のseedデータ
-	await prisma.carCO2Record.create({
-		data: {
-			userId: user.id,
-			targetMonth: thisMonth,
-			monthlyDistance: 300.0,
-			fuelEfficiency: 15.0,
-			fuelType: 'regular',
-			co2Emission: 46.4
-		}
-	});
-
-	// 月間目標のseedデータ
-	await prisma.monthlyTarget.create({
-		data: {
-			userId: user.id,
-			targetMonth: thisMonth,
-			carTarget: 133.9,
-			acTarget: 41.7
-		}
-	});
-
-	console.log('Seed data has been created');
+	console.log('モックデータの作成が完了しました');
 }
 
 main()

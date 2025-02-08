@@ -77,3 +77,16 @@ model MonthlyTarget {
 
   @@unique([userId, targetMonth])
 }
+
+// イベント情報のモデル
+model Event {
+  id          Int      @id @default(autoincrement())
+  title       String   // イベントタイトル
+  description String   // イベントの説明
+  date        DateTime // イベント開催日
+  location    String   // 開催場所
+  organizer   String   // 主催者
+  contact     String   // 連絡先
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
