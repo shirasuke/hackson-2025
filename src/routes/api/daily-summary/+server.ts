@@ -10,64 +10,90 @@ export const GET: RequestHandler = async () => {
 		const tomorrow = new Date(today);
 		tomorrow.setDate(tomorrow.getDate() + 1);
 
-		const [carEmissions, acEmissions, snowRemovals] = await Promise.all([
-			// 自動車のCO2排出量
-			prisma.carCO2Record.findMany({
-				where: {
-					targetMonth: {
-						gte: today,
-						lt: tomorrow
-					}
-				}
-			}),
+		// 月初めの日付を取得
+		const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+		// 月末の日付を取得
+		const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
-			// エアコンのCO2排出量
-			prisma.aCCO2Record.findMany({
-				where: {
-					date: {
-						gte: today,
-						lt: tomorrow
+		const [todayCarEmissions, todayAcEmissions, monthlyCarEmissions, monthlyAcEmissions] =
+			await Promise.all([
+				// 本日の自動車のCO2排出量
+				prisma.carCO2Record.findMany({
+					where: {
+						targetMonth: {
+							gte: today,
+							lt: tomorrow
+						}
 					}
-				}
-			}),
+				}),
 
-			// 雪かきによるCO2削減量
-			prisma.snowRemovalRecord.findMany({
-				where: {
-					date: {
-						gte: today,
-						lt: tomorrow
+				// 本日のエアコンのCO2排出量
+				prisma.aCCO2Record.findMany({
+					where: {
+						date: {
+							gte: today,
+							lt: tomorrow
+						}
 					}
-				}
-			})
-		]);
+				}),
 
-		// 活動記録の集計
+				// 今月の自動車のCO2排出量
+				prisma.carCO2Record.findMany({
+					where: {
+						targetMonth: {
+							gte: startOfMonth,
+							lt: endOfMonth
+						}
+					}
+				}),
+
+				// 今月のエアコンのCO2排出量
+				prisma.aCCO2Record.findMany({
+					where: {
+						date: {
+							gte: startOfMonth,
+							lt: endOfMonth
+						}
+					}
+				})
+			]);
+
+		// 本日の活動記録の集計
 		const activities = [
-			...snowRemovals.map((record) => ({
-				name: '雪かき',
-				reduction: record.co2Reduction
-			})),
-			...carEmissions.map((record) => ({
+			...todayCarEmissions.map((record) => ({
 				name: '自動車',
 				emission: record.co2Emission
 			})),
-			...acEmissions.map((record) => ({
+			...todayAcEmissions.map((record) => ({
 				name: 'エアコン',
 				emission: record.co2Emission
 			}))
 		];
 
-		const todayReduction = snowRemovals.reduce((sum, record) => sum + record.co2Reduction, 0);
+		// 今日の合計排出量
 		const todayEmission =
-			carEmissions.reduce((sum, record) => sum + record.co2Emission, 0) +
-			acEmissions.reduce((sum, record) => sum + record.co2Emission, 0);
+			todayCarEmissions.reduce((sum, record) => sum + record.co2Emission, 0) +
+			todayAcEmissions.reduce((sum, record) => sum + record.co2Emission, 0);
+
+		// 月間の平均排出量を計算
+		const daysInMonth = endOfMonth.getDate();
+		const monthlyTotalEmission =
+			monthlyCarEmissions.reduce((sum, record) => sum + record.co2Emission, 0) +
+			monthlyAcEmissions.reduce((sum, record) => sum + record.co2Emission, 0);
+		const monthlyAverageEmission = monthlyTotalEmission / daysInMonth;
+
+		// 平均との差分（パーセンテージ）
+		const comparisonPercentage =
+			monthlyAverageEmission > 0
+				? ((todayEmission - monthlyAverageEmission) / monthlyAverageEmission) * 100
+				: 0;
 
 		return json({
-			todayReduction,
 			todayEmission,
-			netReduction: todayReduction - todayEmission,
-			activities
+			monthlyAverageEmission,
+			comparisonPercentage,
+			activities,
+			monthlyTotalEmission
 		});
 	} catch (error) {
 		console.error('Error fetching daily summary:', error);

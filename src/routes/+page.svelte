@@ -6,16 +6,6 @@
 		condition: string;
 		humidity: string;
 	};
-	type DailySummary = {
-		todayReduction: number;
-		todayEmission: number;
-		netReduction: number;
-		activities: Array<{
-			name: string;
-			reduction?: number;
-			emission?: number;
-		}>;
-	};
 
 	let weather: Weather = {
 		temperature: '--',
@@ -23,40 +13,30 @@
 		humidity: '--'
 	};
 
-	// CO2削減の集計データ
-	type Activity = {
+	let todayEmission = 0;
+	let monthlyAverageEmission = 0;
+	let comparisonPercentage = 0;
+	let activities: Array<{
 		name: string;
-		reduction: number;
-	};
-
-	type CO2Data = {
-		todayReduction: number;
-		monthlyReduction: number;
-		monthlyTarget: number;
-		activities: Activity[];
-	};
-
-	let co2Data: CO2Data = {
-		todayReduction: 0,
-		monthlyReduction: 0,
-		monthlyTarget: 133.9,
-		activities: []
-	};
-	let dailySummary: DailySummary | null = null;
-	let error: string | null = null;
-
-	// 進捗率の計算
-	$: progressPercentage = (co2Data.monthlyReduction / co2Data.monthlyTarget) * 100;
+		emission: number;
+	}> = [];
+	let monthlyTotalEmission = 0;
 
 	async function fetchDailySummary() {
 		try {
 			const response = await fetch('/api/daily-summary');
-			if (!response.ok) throw new Error('Failed to fetch daily summary');
-			dailySummary = await response.json();
+			if (!response.ok) throw new Error('Failed to fetch summary');
+			const data = await response.json();
+			todayEmission = data.todayEmission;
+			monthlyAverageEmission = data.monthlyAverageEmission;
+			comparisonPercentage = data.comparisonPercentage;
+			activities = data.activities;
+			monthlyTotalEmission = data.monthlyTotalEmission;
 		} catch (e) {
-			error = e.message;
+			console.error('Error fetching daily summary:', e);
 		}
 	}
+
 	// 後でAPIから天気情報を取得する関数
 	async function fetchWeatherData() {
 		// TODO: 実際の天気APIとの連携
@@ -68,28 +48,15 @@
 		};
 	}
 
-	// 後でデータベースからCO2削減データを取得する関数
-	async function fetchCO2Data() {
-		// TODO: 実際のデータベースとの連携
-		// 仮のデータをセット
-		co2Data = {
-			todayReduction: 2.5,
-			monthlyReduction: 45.6,
-			monthlyTarget: 133.9,
-			activities: [
-				{ name: '雪かき', reduction: 1.2 },
-				{ name: 'エアコン調整', reduction: 1.3 }
-			]
-		};
-	}
 	onMount(() => {
 		fetchDailySummary();
+		fetchWeatherData();
 	});
 </script>
 
 <svelte:head>
-	<title>HOME - CO2削減活動ダッシュボード</title>
-	<meta name="description" content="CO2削減活動の概要と天気情報" />
+	<title>HOME - CO2排出量ダッシュボード</title>
+	<meta name="description" content="CO2排出量の概要と天気情報" />
 </svelte:head>
 
 <main class="container">
@@ -114,40 +81,41 @@
 			</div>
 		</section>
 
-		<!-- 本日の記録セクション -->
-		<section class="daily-record">
-			<h2>本日の記録</h2>
-			<div class="record-content">
-				<div class="co2-reduction">
-					<h3>CO2削減量</h3>
-					<p class="reduction-value">{co2Data.todayReduction} kg</p>
-				</div>
-				<div class="activities">
-					<h3>活動記録</h3>
-					<ul>
-						{#each co2Data.activities as activity}
-							<li>
-								<span class="activity-name">{activity.name}</span>
-								<span class="activity-value">-{activity.reduction} kg</span>
-							</li>
-						{/each}
-					</ul>
-				</div>
-			</div>
-		</section>
+		<!-- CO2排出量サマリー -->
+		<section class="summary-section">
+			<h2>CO2排出量サマリー</h2>
+			<div class="summary-card">
+				<h3>本日の排出量</h3>
+				<p class="emission-value">{todayEmission.toFixed(2)} kg-CO2</p>
 
-		<!-- 月間目標セクション -->
-		<section class="monthly-target">
-			<h2>月間目標達成状況</h2>
-			<div class="target-content">
-				<div class="progress-bar">
-					<div class="progress-fill" style="width: {Math.min(progressPercentage, 100)}%" />
+				<div class="comparison">
+					<h3>月間平均との比較</h3>
+					<p class="average">月間平均: {monthlyAverageEmission.toFixed(2)} kg-CO2/日</p>
+					<div class="percentage {comparisonPercentage > 0 ? 'over' : 'under'}">
+						{#if comparisonPercentage > 0}
+							<span>平均より {comparisonPercentage.toFixed(1)}% 多い</span>
+						{:else if comparisonPercentage < 0}
+							<span>平均より {Math.abs(comparisonPercentage).toFixed(1)}% 少ない</span>
+						{:else}
+							<span>平均と同じ</span>
+						{/if}
+					</div>
 				</div>
-				<p class="progress-text">
-					{co2Data.monthlyReduction} / {co2Data.monthlyTarget} kg （{progressPercentage.toFixed(
-						1
-					)}%）
-				</p>
+
+				<div class="activities">
+					<h3>活動別内訳</h3>
+					{#each activities as activity}
+						<div class="activity-item">
+							<span class="activity-name">{activity.name}</span>
+							<span class="activity-value">{activity.emission.toFixed(2)} kg-CO2</span>
+						</div>
+					{/each}
+				</div>
+
+				<div class="monthly-total">
+					<h3>今月の合計排出量</h3>
+					<p class="total-value">{monthlyTotalEmission.toFixed(2)} kg-CO2</p>
+				</div>
 			</div>
 		</section>
 	</div>
@@ -256,6 +224,27 @@
 		font-weight: bold;
 		color: var(--glacier-blue);
 		text-shadow: 1px 1px 2px var(--shadow-blue);
+		margin-bottom: 0.5rem;
+	}
+
+	.emission-value {
+		font-size: 1.2rem;
+		color: #e74c3c;
+		margin-bottom: 0.3rem;
+	}
+
+	.net-value {
+		font-size: 1.4rem;
+		color: var(--deep-blue);
+		font-weight: bold;
+	}
+
+	.activity-value.reduction {
+		color: var(--glacier-blue);
+	}
+
+	.activity-value.emission {
+		color: #e74c3c;
 	}
 
 	.activities ul {
@@ -311,5 +300,106 @@
 		font-size: 1.1rem;
 		color: var(--frost-gray);
 		margin-top: 0.5rem;
+	}
+
+	.loading {
+		text-align: center;
+		color: var(--frost-gray);
+		padding: 1rem;
+	}
+
+	footer {
+		text-align: center;
+		padding: 2rem;
+		background-color: var(--deep-blue);
+		color: var(--snow-white);
+		margin-top: 2rem;
+	}
+
+	footer p {
+		margin: 0;
+		font-size: 1.1rem;
+	}
+
+	.content {
+		max-width: 800px;
+		margin: 0 auto;
+		padding: 2rem;
+	}
+
+	h1 {
+		color: var(--deep-blue);
+		text-align: center;
+		margin-bottom: 2rem;
+	}
+
+	.summary-card {
+		background: var(--snow-white);
+		padding: 2rem;
+		border-radius: 12px;
+		box-shadow: 0 4px 12px var(--shadow-blue);
+	}
+
+	.comparison {
+		background: var(--ice-blue);
+		padding: 1.5rem;
+		border-radius: 8px;
+		margin: 1.5rem 0;
+	}
+
+	.comparison h3 {
+		color: var(--deep-blue);
+		margin-bottom: 1rem;
+	}
+
+	.average {
+		font-size: 1.1rem;
+		color: var(--deep-blue);
+		margin-bottom: 0.5rem;
+	}
+
+	.percentage {
+		font-size: 1.2rem;
+		font-weight: bold;
+		padding: 0.5rem;
+		border-radius: 4px;
+		text-align: center;
+	}
+
+	.percentage.over {
+		color: #dc2626;
+		background: #fee2e2;
+	}
+
+	.percentage.under {
+		color: #16a34a;
+		background: #dcfce7;
+	}
+
+	.activities {
+		margin: 1.5rem 0;
+	}
+
+	.activity-item {
+		display: flex;
+		justify-content: space-between;
+		padding: 0.5rem;
+		border-bottom: 1px solid var(--ice-blue);
+	}
+
+	.monthly-total {
+		margin-top: 2rem;
+		text-align: center;
+	}
+
+	.monthly-total h3 {
+		color: var(--deep-blue);
+		margin-bottom: 1rem;
+	}
+
+	.total-value {
+		font-size: 1.8rem;
+		font-weight: bold;
+		color: var(--glacier-blue);
 	}
 </style>
