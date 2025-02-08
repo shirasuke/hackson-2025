@@ -1,9 +1,20 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	// 天気情報の状態管理
 	type Weather = {
 		temperature: string;
 		condition: string;
 		humidity: string;
+	};
+	type DailySummary = {
+		todayReduction: number;
+		todayEmission: number;
+		netReduction: number;
+		activities: Array<{
+			name: string;
+			reduction?: number;
+			emission?: number;
+		}>;
 	};
 
 	let weather: Weather = {
@@ -31,10 +42,21 @@
 		monthlyTarget: 133.9,
 		activities: []
 	};
+	let dailySummary: DailySummary | null = null;
+	let error: string | null = null;
 
 	// 進捗率の計算
 	$: progressPercentage = (co2Data.monthlyReduction / co2Data.monthlyTarget) * 100;
 
+	async function fetchDailySummary() {
+		try {
+			const response = await fetch('/api/daily-summary');
+			if (!response.ok) throw new Error('Failed to fetch daily summary');
+			dailySummary = await response.json();
+		} catch (e) {
+			error = e.message;
+		}
+	}
 	// 後でAPIから天気情報を取得する関数
 	async function fetchWeatherData() {
 		// TODO: 実際の天気APIとの連携
@@ -60,6 +82,9 @@
 			]
 		};
 	}
+	onMount(() => {
+		fetchDailySummary();
+	});
 </script>
 
 <svelte:head>

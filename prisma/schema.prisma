@@ -1,0 +1,79 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 Int                 @id @default(autoincrement())
+  username           String
+  email              String              @unique
+  passwordHash       String
+  carCO2Records      CarCO2Record[]
+  snowRemovalRecords SnowRemovalRecord[]
+  acCO2Records       ACCO2Record[]
+  monthlyTargets     MonthlyTarget[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+}
+
+model CarCO2Record {
+  id              Int      @id @default(autoincrement())
+  userId          Int
+  user            User     @relation(fields: [userId], references: [id])
+  targetMonth     DateTime
+  monthlyDistance Float
+  fuelEfficiency  Float
+  fuelType        String
+  co2Emission     Float
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model SnowRemovalRecord {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  user         User     @relation(fields: [userId], references: [id])
+  date         DateTime
+  area         Float
+  snowDepth    Float
+  timeSpent    Int
+  co2Reduction Float
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model ACCO2Record {
+  id               Int      @id @default(autoincrement())
+  userId           Int
+  user             User     @relation(fields: [userId], references: [id])
+  date             DateTime
+  usageHours       Float
+  powerConsumption Float
+  temperature      Int
+  co2Emission      Float
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model MonthlyTarget {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id])
+  targetMonth DateTime
+  carTarget  Float
+  acTarget   Float
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, targetMonth])
+}
