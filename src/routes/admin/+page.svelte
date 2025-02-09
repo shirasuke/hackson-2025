@@ -141,12 +141,16 @@
 				body: JSON.stringify({ participationId, status })
 			});
 
-			if (!response.ok) throw new Error('Failed to update status');
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.message || 'Failed to update status');
+			}
 
 			// 更新後のデータを再取得
 			await fetchParticipations();
 		} catch (e) {
 			console.error('Error updating participation status:', e);
+			alert('ステータスの更新に失敗しました。');
 		}
 	}
 
@@ -282,26 +286,81 @@
 							<tr>
 								<th
 									class="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
-									>イベント名</th
 								>
+									イベント名
+								</th>
 								<th
 									class="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
-									>開催日</th
 								>
+									開催日
+								</th>
 								<th
 									class="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
-									>参加者数</th
 								>
+									参加者
+								</th>
+								<th
+									class="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
+								>
+									ステータス
+								</th>
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-gray-200 bg-white">
-							{#each eventParticipations as event}
+							{#each participations as participation}
 								<tr class="hover:bg-gray-50">
-									<td class="px-6 py-4 whitespace-nowrap">{event.eventName}</td>
-									<td class="px-6 py-4 whitespace-nowrap"
-										>{new Date(event.date).toLocaleDateString('ja-JP')}</td
-									>
-									<td class="px-6 py-4 whitespace-nowrap">{event.participantCount}人</td>
+									<td class="px-6 py-4 whitespace-nowrap">
+										<div class="font-medium text-gray-900">{participation.event.title}</div>
+									</td>
+									<td class="px-6 py-4 whitespace-nowrap">
+										{new Date(participation.event.date).toLocaleDateString('ja-JP')}
+									</td>
+									<td class="px-6 py-4">
+										<div class="text-sm">
+											<div class="font-medium text-gray-900">{participation.user.username}</div>
+											<div class="text-gray-500">{participation.user.email}</div>
+										</div>
+									</td>
+									<td class="px-6 py-4 whitespace-nowrap">
+										<span
+											class="inline-flex rounded-full px-2 text-xs leading-5 font-semibold {participation.status ===
+											'pending'
+												? 'bg-yellow-100 text-yellow-800'
+												: participation.status === 'approved'
+													? 'bg-green-100 text-green-800'
+													: 'bg-red-100 text-red-800'}"
+										>
+											{#if participation.status === 'pending'}
+												審査中
+											{:else if participation.status === 'approved'}
+												承認済み
+											{:else if participation.status === 'rejected'}
+												却下
+											{/if}
+										</span>
+										{#if participation.status === 'pending'}
+											<div class="mt-2 flex space-x-2">
+												<button
+													class="inline-flex items-center rounded border border-transparent bg-green-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:outline-none"
+													on:click={() => updateParticipationStatus(participation.id, 'approved')}
+												>
+													承認
+												</button>
+												<button
+													class="inline-flex items-center rounded border border-transparent bg-red-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:outline-none"
+													on:click={() => updateParticipationStatus(participation.id, 'rejected')}
+												>
+													却下
+												</button>
+											</div>
+										{/if}
+									</td>
+								</tr>
+							{:else}
+								<tr>
+									<td colspan="4" class="px-6 py-4 text-center text-gray-500">
+										参加申請はありません。
+									</td>
 								</tr>
 							{/each}
 						</tbody>

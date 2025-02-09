@@ -1,27 +1,10 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '$lib/prisma';
 import { error } from '@sveltejs/kit';
 
-const prisma = new PrismaClient();
-
 // 全ての参加申請を取得
-export const GET: RequestHandler = async ({ locals }) => {
-	const session = await locals.getSession();
-	if (!session?.user?.email) {
-		throw error(401, 'Unauthorized');
-	}
-
-	// 管理者チェック
-	const user = await prisma.user.findUnique({
-		where: { email: session.user.email }
-	});
-
-	if (!user || user.email !== 'admin@example.com') {
-		// TODO: 適切な管理者チェックに変更
-		throw error(403, 'Forbidden');
-	}
-
+export const GET: RequestHandler = async () => {
 	try {
 		const participations = await prisma.eventParticipation.findMany({
 			include: {
@@ -44,22 +27,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 };
 
 // 参加申請のステータスを更新
-export const PUT: RequestHandler = async ({ request, locals }) => {
-	const session = await locals.getSession();
-	if (!session?.user?.email) {
-		throw error(401, 'Unauthorized');
-	}
-
-	// 管理者チェック
-	const user = await prisma.user.findUnique({
-		where: { email: session.user.email }
-	});
-
-	if (!user || user.email !== 'admin@example.com') {
-		// TODO: 適切な管理者チェックに変更
-		throw error(403, 'Forbidden');
-	}
-
+export const PUT: RequestHandler = async ({ request }) => {
 	const { participationId, status } = await request.json();
 
 	if (!['approved', 'rejected'].includes(status)) {
@@ -85,6 +53,9 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
 		return json(updatedParticipation);
 	} catch (e) {
 		console.error('Error updating participation status:', e);
+		if (e.code === 'P2025') {
+			throw error(404, 'Participation not found');
+		}
 		throw error(500, 'Failed to update participation status');
 	}
 };
