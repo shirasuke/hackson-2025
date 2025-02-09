@@ -1,17 +1,5 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	// 天気情報の状態管理
-	type Weather = {
-		temperature: string;
-		condition: string;
-		humidity: string;
-	};
-
-	let weather: Weather = {
-		temperature: '--',
-		condition: '読み込み中...',
-		humidity: '--'
-	};
 
 	let todayEmission = 0;
 	let monthlyAverageEmission = 0;
@@ -25,6 +13,9 @@
 		car: number;
 		ac: number;
 	} | null = null;
+	let hasEarnedStamp = false;
+	let totalStamps = 10;
+	let earnedStamps = 0;
 
 	async function fetchDailySummary() {
 		try {
@@ -37,52 +28,50 @@
 			activities = data.activities;
 			monthlyTotalEmission = data.monthlyTotalEmission;
 			standardDailyEmission = data.standardDailyEmission;
+			hasEarnedStamp = comparisonPercentage < 0;
+			// TODO: APIから獲得済みスタンプ数を取得する
+			earnedStamps = 5; // 仮の値：実際のAPIからの取得に置き換える
 		} catch (e) {
 			console.error('Error fetching daily summary:', e);
 		}
 	}
 
-	// 後でAPIから天気情報を取得する関数
-	async function fetchWeatherData() {
-		// TODO: 実際の天気APIとの連携
-		// 仮のデータをセット
-		weather = {
-			temperature: '4',
-			condition: '晴れ',
-			humidity: '45'
-		};
-	}
-
 	onMount(() => {
 		fetchDailySummary();
-		fetchWeatherData();
 	});
+
+	function getStampStatus(index: number) {
+		return index < earnedStamps;
+	}
 </script>
 
 <svelte:head>
 	<title>HOME - CO2排出量ダッシュボード</title>
-	<meta name="description" content="CO2排出量の概要と天気情報" />
+	<meta name="description" content="CO2排出量の概要" />
 </svelte:head>
 
 <main class="container">
 	<div class="grid">
-		<!-- 天気情報セクション -->
-		<section class="weather-section">
-			<h2>今日の天気</h2>
-			<div class="weather-content">
-				<div class="weather-main">
-					<div class="temperature">
-						<span class="value">{weather.temperature}</span>
-						<span class="unit">℃</span>
+		<!-- スタンプコレクションセクション -->
+		<section class="stamp-collection-container">
+			<h2>エコスタンプ</h2>
+			<div class="stamp-progress">
+				<span class="progress-text">{earnedStamps}/{totalStamps} 個達成</span>
+			</div>
+			<div class="stamps-grid">
+				{#each Array(totalStamps) as _, i}
+					<div class="stamp-slot {getStampStatus(i) ? 'earned' : 'empty'}">
+						{#if getStampStatus(i)}
+							<div class="stamp-mini" style="animation-delay: {i * 0.1}s">
+								<span class="stamp-footprint">👣</span>
+							</div>
+						{:else}
+							<div class="stamp-placeholder">
+								<span class="placeholder-text">未達成</span>
+							</div>
+						{/if}
 					</div>
-					<div class="condition">{weather.condition}</div>
-				</div>
-				<div class="weather-details">
-					<div class="humidity">
-						<span class="label">湿度</span>
-						<span class="value">{weather.humidity}%</span>
-					</div>
-				</div>
+				{/each}
 			</div>
 		</section>
 
@@ -152,9 +141,9 @@
 	}
 
 	.grid {
-		display: grid;
+		display: flex;
+		flex-direction: column;
 		gap: 1rem;
-		grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 	}
 
 	section {
@@ -183,167 +172,95 @@
 		margin-bottom: 0.5rem;
 	}
 
-	.weather-content {
-		text-align: center;
-		padding: 1rem;
-		background: linear-gradient(to bottom, var(--ice-blue), var(--snow-white));
-		border-radius: 8px;
-	}
-
-	.temperature {
-		font-size: 3.5rem;
-		font-weight: bold;
-		color: var(--glacier-blue);
-		text-shadow: 2px 2px 4px var(--shadow-blue);
-	}
-
-	.temperature .unit {
-		font-size: 1.8rem;
-		margin-left: 0.2rem;
-		opacity: 0.8;
-	}
-
-	.condition {
-		font-size: 1.4rem;
-		margin: 0.5rem 0;
-		color: var(--deep-blue);
-	}
-
-	.weather-details {
-		margin-top: 1rem;
-		padding-top: 1rem;
-		border-top: 1px solid var(--ice-blue);
-	}
-
-	.humidity {
-		display: flex;
-		justify-content: space-between;
-		padding: 0.5rem;
-		color: var(--frost-gray);
-	}
-
-	.co2-reduction {
-		text-align: center;
-		margin-bottom: 1.5rem;
-		padding: 1rem;
-		background: var(--ice-blue);
-		border-radius: 8px;
-	}
-
-	.reduction-value {
-		font-size: 2.5rem;
-		font-weight: bold;
-		color: var(--glacier-blue);
-		text-shadow: 1px 1px 2px var(--shadow-blue);
-		margin-bottom: 0.5rem;
-	}
-
-	.emission-value {
-		font-size: 2rem;
-		color: #e74c3c;
-		margin: 0.5rem 0;
-		text-align: center;
-		font-weight: bold;
-	}
-
-	.net-value {
-		font-size: 1.4rem;
-		color: var(--deep-blue);
-		font-weight: bold;
-	}
-
-	.activity-value.reduction {
-		color: var(--glacier-blue);
-	}
-
-	.activity-value.emission {
-		color: #e74c3c;
-	}
-
-	.activities ul {
-		list-style: none;
-		padding: 0;
-		margin: 0;
-	}
-
-	.activities li {
-		display: flex;
-		justify-content: space-between;
-		padding: 0.8rem;
-		border-bottom: 1px solid var(--ice-blue);
-		transition: background-color 0.2s ease;
-	}
-
-	.activities li:hover {
-		background-color: var(--ice-blue);
-		border-radius: 4px;
-	}
-
-	.activity-name {
-		color: var(--deep-blue);
-	}
-
-	.activity-value {
-		color: var(--glacier-blue);
-		font-weight: bold;
-	}
-
-	.monthly-target {
-		grid-column: 1 / -1;
-	}
-
-	.progress-bar {
-		width: 100%;
-		height: 24px;
-		background: var(--ice-blue);
+	.stamp-collection-container {
+		background: var(--snow-white);
 		border-radius: 12px;
-		overflow: hidden;
-		margin: 1rem 0;
-		box-shadow: inset 0 2px 4px var(--shadow-blue);
+		padding: 1.25rem;
+		text-align: center;
+		width: 100%;
+		max-width: 800px;
+		margin: 0 auto;
 	}
 
-	.progress-fill {
-		height: 100%;
-		background: linear-gradient(to right, var(--glacier-blue), var(--deep-blue));
-		transition: width 0.3s ease;
+	.stamp-progress {
+		margin-bottom: 1rem;
+		text-align: center;
 	}
 
 	.progress-text {
-		text-align: center;
-		font-size: 1.1rem;
-		color: var(--frost-gray);
-		margin-top: 0.5rem;
-	}
-
-	.loading {
-		text-align: center;
-		color: var(--frost-gray);
-		padding: 1rem;
-	}
-
-	footer {
-		text-align: center;
-		padding: 2rem;
-		background-color: var(--deep-blue);
-		color: var(--snow-white);
-		margin-top: 2rem;
-	}
-
-	footer p {
-		margin: 0;
-		font-size: 1.1rem;
-	}
-
-	.content {
-		max-width: 800px;
-		margin: 0 auto;
-		padding: 2rem;
-	}
-
-	h1 {
+		font-size: 1.2rem;
 		color: var(--deep-blue);
-		text-align: center;
-		margin-bottom: 2rem;
+		font-weight: bold;
+	}
+
+	.stamps-grid {
+		display: grid;
+		grid-template-columns: repeat(5, 1fr);
+		gap: 0.8rem;
+		padding: 1rem;
+		background: var(--ice-blue);
+		border-radius: 8px;
+		max-width: 500px;
+		margin: 0 auto;
+	}
+
+	.stamp-slot {
+		aspect-ratio: 1;
+		border-radius: 50%;
+		padding: 0.3rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: var(--snow-white);
+		box-shadow: 0 2px 4px var(--shadow-blue);
+	}
+
+	.stamp-mini {
+		width: 100%;
+		height: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border: 1.5px solid var(--glacier-blue);
+		border-radius: 50%;
+		background: rgba(232, 241, 245, 0.8);
+		animation: stampPop 0.5s ease-out forwards;
+		opacity: 0;
+		transform: scale(0);
+		transform-origin: center;
+	}
+
+	@keyframes stampPop {
+		from {
+			transform: scale(0) rotate(30deg);
+			opacity: 0;
+		}
+		to {
+			transform: scale(1) rotate(0deg);
+			opacity: 1;
+		}
+	}
+
+	.stamp-footprint {
+		font-size: 1.4rem;
+		transform: rotate(-15deg); /* 足跡を少し傾ける */
+		filter: opacity(0.8); /* 少し透明に */
+	}
+
+	.stamp-placeholder {
+		width: 100%;
+		height: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border: 2px dashed var(--frost-gray);
+		border-radius: 50%;
+		opacity: 0.5;
+	}
+
+	.placeholder-text {
+		font-size: 0.6rem;
+		color: var(--frost-gray);
 	}
 
 	.summary-card {
@@ -442,17 +359,128 @@
 		margin: 0;
 	}
 
+	.co2-reduction {
+		text-align: center;
+		margin-bottom: 1.5rem;
+		padding: 1rem;
+		background: var(--ice-blue);
+		border-radius: 8px;
+	}
+
+	.reduction-value {
+		font-size: 2.5rem;
+		font-weight: bold;
+		color: var(--glacier-blue);
+		text-shadow: 1px 1px 2px var(--shadow-blue);
+		margin-bottom: 0.5rem;
+	}
+
+	.net-value {
+		font-size: 1.4rem;
+		color: var(--deep-blue);
+		font-weight: bold;
+	}
+
+	.activity-value.reduction {
+		color: var(--glacier-blue);
+	}
+
+	.activity-value.emission {
+		color: #e74c3c;
+	}
+
+	.activities ul {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+	}
+
+	.activities li {
+		display: flex;
+		justify-content: space-between;
+		padding: 0.8rem;
+		border-bottom: 1px solid var(--ice-blue);
+		transition: background-color 0.2s ease;
+	}
+
+	.activities li:hover {
+		background-color: var(--ice-blue);
+		border-radius: 4px;
+	}
+
+	.monthly-target {
+		grid-column: 1 / -1;
+	}
+
+	.progress-bar {
+		width: 100%;
+		height: 24px;
+		background: var(--ice-blue);
+		border-radius: 12px;
+		overflow: hidden;
+		margin: 1rem 0;
+		box-shadow: inset 0 2px 4px var(--shadow-blue);
+	}
+
+	.progress-fill {
+		height: 100%;
+		background: linear-gradient(to right, var(--glacier-blue), var(--deep-blue));
+		transition: width 0.3s ease;
+	}
+
+	.progress-text {
+		text-align: center;
+		font-size: 1.1rem;
+		color: var(--frost-gray);
+		margin-top: 0.5rem;
+	}
+
+	.loading {
+		text-align: center;
+		color: var(--frost-gray);
+		padding: 1rem;
+	}
+
+	footer {
+		text-align: center;
+		padding: 2rem;
+		background-color: var(--deep-blue);
+		color: var(--snow-white);
+		margin-top: 2rem;
+	}
+
+	footer p {
+		margin: 0;
+		font-size: 1.1rem;
+	}
+
+	.content {
+		max-width: 800px;
+		margin: 0 auto;
+		padding: 2rem;
+	}
+
+	h1 {
+		color: var(--deep-blue);
+		text-align: center;
+		margin-bottom: 2rem;
+	}
+
+	.summary-section {
+		width: 100%;
+		max-width: 800px;
+		margin: 0 auto;
+	}
+
 	@media (max-width: 768px) {
 		.container {
 			padding: 0.5rem;
 		}
 
-		.grid {
-			gap: 0.75rem;
-		}
-
-		section {
-			padding: 1rem;
+		.stamps-grid {
+			max-width: 100%;
+			gap: 0.4rem;
+			padding: 0.8rem;
 		}
 
 		.emission-value {
@@ -462,6 +490,14 @@
 		.activity-item {
 			padding: 0.5rem;
 			font-size: 0.9rem;
+		}
+
+		.stamp-footprint {
+			font-size: 1.2rem;
+		}
+
+		.placeholder-text {
+			font-size: 0.5rem;
 		}
 	}
 
