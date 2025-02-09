@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import prisma from '$lib/prisma';
+import { prisma } from '$lib/prisma';
 
 export const GET: RequestHandler = async ({ url }) => {
 	const month = url.searchParams.get('month');
@@ -13,64 +13,64 @@ export const GET: RequestHandler = async ({ url }) => {
 	const endDate = new Date(year, monthNum, 0);
 
 	try {
-		const userSummaries = await prisma.$transaction(async (tx) => {
-			const users = await tx.user.findMany();
+		// ユーザー一覧を取得
+		const users = await prisma.user.findMany();
 
-			return Promise.all(
-				users.map(async (user) => {
-					const [carCO2, acCO2, snowRemovalCO2] = await Promise.all([
-						tx.carCO2Record.aggregate({
-							where: {
-								userId: user.id,
-								date: {
-									gte: startDate,
-									lte: endDate
-								}
-							},
-							_sum: {
-								co2Amount: true
+		// 各ユーザーのCO2データを取得
+		const userSummaries = await Promise.all(
+			users.map(async (user) => {
+				const [carCO2, acCO2, snowRemovalCO2] = await Promise.all([
+					prisma.carCO2Record.aggregate({
+						where: {
+							userId: user.id,
+							targetMonth: {
+								gte: startDate,
+								lte: endDate
 							}
-						}),
-						tx.acCO2Record.aggregate({
-							where: {
-								userId: user.id,
-								date: {
-									gte: startDate,
-									lte: endDate
-								}
-							},
-							_sum: {
-								co2Amount: true
+						},
+						_sum: {
+							co2Emission: true
+						}
+					}),
+					prisma.aCCO2Record.aggregate({
+						where: {
+							userId: user.id,
+							date: {
+								gte: startDate,
+								lte: endDate
 							}
-						}),
-						tx.snowRemovalRecord.aggregate({
-							where: {
-								userId: user.id,
-								date: {
-									gte: startDate,
-									lte: endDate
-								}
-							},
-							_sum: {
-								co2Amount: true
+						},
+						_sum: {
+							co2Emission: true
+						}
+					}),
+					prisma.snowRemovalRecord.aggregate({
+						where: {
+							userId: user.id,
+							date: {
+								gte: startDate,
+								lte: endDate
 							}
-						})
-					]);
+						},
+						_sum: {
+							co2Reduction: true
+						}
+					})
+				]);
 
-					const carTotal = carCO2._sum.co2Amount || 0;
-					const acTotal = acCO2._sum.co2Amount || 0;
-					const snowTotal = snowRemovalCO2._sum.co2Amount || 0;
+				const carTotal = carCO2._sum.co2Emission || 0;
+				const acTotal = acCO2._sum.co2Emission || 0;
+				const snowTotal = snowRemovalCO2._sum.co2Reduction || 0;
 
-					return {
-						userId: user.id,
-						totalCO2: carTotal + acTotal + snowTotal,
-						carCO2: carTotal,
-						acCO2: acTotal,
-						snowRemovalCO2: snowTotal
-					};
-				})
-			);
-		});
+				return {
+					userId: user.id,
+					totalCO2: carTotal + acTotal - snowTotal, // 除雪による削減量を引く
+					carCO2: carTotal,
+					acCO2: acTotal,
+					snowRemovalCO2: snowTotal
+				};
+			})
+		);
 
 		return json(userSummaries);
 	} catch (error) {

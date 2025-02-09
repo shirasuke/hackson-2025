@@ -27,10 +27,16 @@
 	let eventParticipations: EventParticipation[] = [];
 	let currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM形式
 	let loading = false;
+	let totalUsersCO2Summary = {
+		totalCO2: 0,
+		carCO2: 0,
+		acCO2: 0
+	};
 
 	onMount(async () => {
 		await fetchUsers();
 		await fetchEventParticipations();
+		await fetchAllUsersCO2Summary();
 	});
 
 	async function fetchUsers() {
@@ -67,6 +73,30 @@
 		}
 	}
 
+	async function fetchAllUsersCO2Summary() {
+		try {
+			loading = true;
+			const response = await fetch(`/api/admin/user-summaries?month=${currentMonth}`);
+			if (response.ok) {
+				const summaries: UserCO2Summary[] = await response.json();
+				totalUsersCO2Summary = summaries.reduce(
+					(acc, curr) => ({
+						totalCO2: acc.totalCO2 + curr.totalCO2,
+						carCO2: acc.carCO2 + curr.carCO2,
+						acCO2: acc.acCO2 + curr.acCO2
+					}),
+					{ totalCO2: 0, carCO2: 0, acCO2: 0 }
+				);
+			} else {
+				console.error('全ユーザーのCO2サマリー取得に失敗しました');
+			}
+		} catch (error) {
+			console.error('全ユーザーのCO2サマリー取得中にエラーが発生しました:', error);
+		} finally {
+			loading = false;
+		}
+	}
+
 	async function fetchEventParticipations() {
 		const response = await fetch(`/api/admin/event-participations?month=${currentMonth}`);
 		if (response.ok) {
@@ -79,11 +109,12 @@
 		await fetchUserSummary(userId);
 	}
 
-	function handleMonthChange() {
+	async function handleMonthChange() {
 		if (selectedUserId) {
 			fetchUserSummary(selectedUserId);
 		}
 		fetchEventParticipations();
+		fetchAllUsersCO2Summary();
 	}
 </script>
 
@@ -92,6 +123,47 @@
 		<h1 class="mb-8 text-3xl font-bold text-gray-900">管理者ダッシュボード</h1>
 
 		<div class="grid gap-8">
+			<!-- 全体のCO2排出量サマリーセクション -->
+			<section class="rounded-lg bg-white p-6 shadow-sm">
+				<div class="mb-6 flex items-center justify-between">
+					<h2 class="text-2xl font-semibold text-gray-800">全体のCO2排出量サマリー</h2>
+					<div class="text-lg text-gray-600">
+						{new Date(currentMonth + '-01').toLocaleDateString('ja-JP', {
+							year: 'numeric',
+							month: 'long'
+						})}
+					</div>
+				</div>
+				{#if loading}
+					<div class="flex h-40 items-center justify-center">
+						<div
+							class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-green-500 border-t-transparent"
+						></div>
+					</div>
+				{:else}
+					<div class="grid grid-cols-1 gap-6 md:grid-cols-3">
+						<div
+							class="rounded-lg bg-gradient-to-br from-green-500 to-green-600 p-4 text-white shadow-sm"
+						>
+							<div class="text-sm opacity-90">総CO2排出量</div>
+							<div class="text-2xl font-bold">{totalUsersCO2Summary.totalCO2.toFixed(2)} kg</div>
+						</div>
+						<div
+							class="rounded-lg bg-gradient-to-br from-green-500 to-green-600 p-4 text-white shadow-sm"
+						>
+							<div class="text-sm opacity-90">車両</div>
+							<div class="text-2xl font-bold">{totalUsersCO2Summary.carCO2.toFixed(2)} kg</div>
+						</div>
+						<div
+							class="rounded-lg bg-gradient-to-br from-green-500 to-green-600 p-4 text-white shadow-sm"
+						>
+							<div class="text-sm opacity-90">エアコン</div>
+							<div class="text-2xl font-bold">{totalUsersCO2Summary.acCO2.toFixed(2)} kg</div>
+						</div>
+					</div>
+				{/if}
+			</section>
+
 			<!-- ユーザー一覧セクション -->
 			<section class="rounded-lg bg-white p-6 shadow-sm">
 				<div class="mb-6 flex items-center justify-between">
