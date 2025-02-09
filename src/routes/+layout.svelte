@@ -49,9 +49,21 @@
 		font-weight: bold;
 	}
 
-	@media (min-width: 480px) {
+	@media (max-width: 768px) {
+		main {
+			padding: 0.5rem;
+		}
+	}
+
+	@media (max-width: 480px) {
+		main {
+			padding: 0.5rem;
+			font-size: 0.9rem;
+		}
+
 		footer {
-			padding: 12px 0;
+			padding: 8px;
+			font-size: 0.8rem;
 		}
 	}
 </style>
