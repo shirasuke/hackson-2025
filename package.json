@@ -15,7 +15,8 @@
 		"test:unit": "vitest",
 		"test": "npm run test:unit -- --run && npm run test:e2e",
 		"test:e2e": "playwright test",
-		"db:seed": "npx ts-node prisma/seed.ts"
+		"db:seed": "npx ts-node prisma/seed.ts",
+		"prisma:seed": "npx ts-node prisma/seed.ts"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^1.2.5",
