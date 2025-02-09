@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+
 	type Event = {
 		id: number;
 		title: string;
@@ -7,86 +9,139 @@
 		location: string;
 		organizer: string;
 		contact: string;
+		isParticipating: boolean;
 	};
 
-	// モックデータを直接定義
-	const events: Event[] = [
-		{
-			id: 1,
-			title: '冬の省エネ講座',
-			description:
-				'寒い冬を快適に過ごしながら、エネルギー消費を抑える方法を学びます。断熱対策や暖房の効率的な使用方法など、実践的なテクニックを紹介します。',
-			date: '2024-02-20',
-			location: '札幌市環境プラザ',
-			organizer: '札幌環境活動推進協議会',
-			contact: 'eco@example.com'
-		},
-		{
-			id: 2,
-			title: '雪かきボランティア募集',
-			description:
-				'高齢者世帯の雪かき支援を行います。地域コミュニティの助け合いを通じて、冬の生活をサポートしましょう。道具は主催者が用意します。',
-			date: '2024-02-25',
-			location: '札幌市北区北24条駅前広場',
-			organizer: '北区町内会連合会',
-			contact: 'volunteer@example.com'
-		},
-		{
-			id: 3,
-			title: 'エコドライブ講習会',
-			description:
-				'冬道での安全運転とCO2削減を両立するエコドライブのコツを、実践を交えて学びます。燃費向上テクニックも紹介します。',
-			date: '2024-03-05',
-			location: '札幌市自動車学校',
-			organizer: '北海道運輸局',
-			contact: 'drive@example.com'
-		},
-		{
-			id: 4,
-			title: '春の省エネ住宅見学会',
-			description:
-				'高断熱・高気密の省エネ住宅を見学できます。暖房費を大幅に削減しながら快適に暮らす工夫を、実際の住宅で体感してください。',
-			date: '2024-03-15',
-			location: '札幌市厚別区もみじ台',
-			organizer: '北海道住宅協会',
-			contact: 'house@example.com'
+	let events: Event[] = [];
+	let loading = false;
+	let message = { text: '', type: '' };
+
+	function showMessage(text: string, type: 'success' | 'error') {
+		message = { text, type };
+		setTimeout(() => {
+			message = { text: '', type: '' };
+		}, 3000);
+	}
+
+	async function fetchEvents() {
+		try {
+			loading = true;
+			const response = await fetch('/api/events');
+			if (!response.ok) throw new Error('Failed to fetch events');
+			events = await response.json();
+		} catch (e) {
+			console.error('Error fetching events:', e);
+			showMessage('イベントの取得に失敗しました。', 'error');
+		} finally {
+			loading = false;
 		}
-	];
+	}
+
+	async function participateInEvent(eventId: number) {
+		try {
+			const response = await fetch('/api/events/participation', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({ eventId })
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.message || 'Failed to register for event');
+			}
+
+			// 参加登録後、イベント一覧を再取得して表示を更新
+			await fetchEvents();
+			showMessage('イベントへの参加登録が完了しました！', 'success');
+		} catch (e) {
+			console.error('Error registering for event:', e);
+			showMessage(e instanceof Error ? e.message : 'イベントへの参加登録に失敗しました。', 'error');
+		}
+	}
+
+	async function cancelParticipation(eventId: number) {
+		try {
+			const response = await fetch(`/api/events/participation/${eventId}`, {
+				method: 'DELETE'
+			});
+
+			if (!response.ok) throw new Error('Failed to cancel participation');
+
+			// 参加キャンセル後、イベント一覧を再取得して表示を更新
+			await fetchEvents();
+			showMessage('イベントの参加をキャンセルしました。', 'success');
+		} catch (e) {
+			console.error('Error canceling participation:', e);
+			showMessage('イベント参加のキャンセルに失敗しました。', 'error');
+		}
+	}
+
+	onMount(() => {
+		fetchEvents();
+	});
 </script>
 
 <div class="content">
 	<h1>イベント掲示板</h1>
 
+	{#if message.text}
+		<div class="message {message.type}">
+			{message.text}
+		</div>
+	{/if}
+
 	<div class="actions">
 		<a href="/events/new" class="new-event-button">新規イベントを投稿</a>
 	</div>
 
-	<div class="events-grid">
-		{#each events as event}
-			<div class="event-card">
-				<h2>{event.title}</h2>
-				<div class="event-details">
-					<div class="detail-item">
-						<span class="label">開催日:</span>
-						<span class="value">{new Date(event.date).toLocaleDateString('ja-JP')}</span>
+	{#if loading}
+		<div class="loading">
+			<p>読み込み中...</p>
+		</div>
+	{:else}
+		<div class="events-grid">
+			{#each events as event}
+				<div class="event-card">
+					<h2>{event.title}</h2>
+					<div class="event-details">
+						<div class="detail-item">
+							<span class="label">開催日:</span>
+							<span class="value">{new Date(event.date).toLocaleDateString('ja-JP')}</span>
+						</div>
+						<div class="detail-item">
+							<span class="label">場所:</span>
+							<span class="value">{event.location}</span>
+						</div>
+						<div class="detail-item">
+							<span class="label">主催:</span>
+							<span class="value">{event.organizer}</span>
+						</div>
 					</div>
-					<div class="detail-item">
-						<span class="label">場所:</span>
-						<span class="value">{event.location}</span>
+					<p class="description">{event.description}</p>
+					<div class="contact-info">
+						<span class="label">連絡先:</span>
+						<span class="value">{event.contact}</span>
 					</div>
-					<div class="detail-item">
-						<span class="label">主催:</span>
-						<span class="value">{event.organizer}</span>
+					<div class="participation-section">
+						{#if event.isParticipating}
+							<div class="participation-status">
+								<span class="status-badge participating">参加予定</span>
+								<button class="cancel-button" on:click={() => cancelParticipation(event.id)}>
+									キャンセル
+								</button>
+							</div>
+						{:else}
+							<button class="participate-button" on:click={() => participateInEvent(event.id)}>
+								参加する
+							</button>
+						{/if}
 					</div>
 				</div>
-				<p class="description">{event.description}</p>
-				<div class="contact-info">
-					<span class="label">連絡先:</span>
-					<span class="value">{event.contact}</span>
-				</div>
-			</div>
-		{/each}
-	</div>
+			{/each}
+		</div>
+	{/if}
 </div>
 
 <style>
@@ -177,5 +232,91 @@
 		margin-top: 1rem;
 		padding-top: 1rem;
 		border-top: 1px solid var(--ice-blue);
+	}
+
+	.loading {
+		text-align: center;
+		padding: 2rem;
+		color: var(--frost-gray);
+	}
+
+	.participation-section {
+		margin-top: 1rem;
+		padding-top: 1rem;
+		border-top: 1px solid var(--ice-blue);
+		display: flex;
+		justify-content: center;
+	}
+
+	.participate-button {
+		background: var(--glacier-blue);
+		color: var(--snow-white);
+		padding: 0.5rem 1.5rem;
+		border: none;
+		border-radius: 4px;
+		font-weight: 500;
+		cursor: pointer;
+		transition: background-color 0.2s;
+	}
+
+	.participate-button:hover {
+		background: var(--deep-blue);
+	}
+
+	.participation-status {
+		display: flex;
+		gap: 1rem;
+		align-items: center;
+	}
+
+	.status-badge.participating {
+		background-color: #d1fae5;
+		color: #065f46;
+	}
+
+	.cancel-button {
+		background: #ef4444;
+		color: white;
+		padding: 0.5rem 1rem;
+		border: none;
+		border-radius: 4px;
+		font-weight: 500;
+		cursor: pointer;
+		transition: background-color 0.2s;
+	}
+
+	.cancel-button:hover {
+		background: #dc2626;
+	}
+
+	.message {
+		position: fixed;
+		top: 20px;
+		right: 20px;
+		padding: 1rem 2rem;
+		border-radius: 8px;
+		color: white;
+		font-weight: bold;
+		animation: slideIn 0.3s ease-out;
+		z-index: 1000;
+	}
+
+	.message.success {
+		background-color: #10b981;
+	}
+
+	.message.error {
+		background-color: #ef4444;
+	}
+
+	@keyframes slideIn {
+		from {
+			transform: translateX(100%);
+			opacity: 0;
+		}
+		to {
+			transform: translateX(0);
+			opacity: 1;
+		}
 	}
 </style>

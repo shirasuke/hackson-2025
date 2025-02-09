@@ -1,20 +1,34 @@
 import { json } from '@sveltejs/kit';
 import { prisma } from '$lib/prisma';
 import type { RequestHandler } from './$types';
+import { error } from '@sveltejs/kit';
 
 // イベント一覧を取得
 export const GET: RequestHandler = async () => {
 	try {
+		// イベント一覧を取得
 		const events = await prisma.event.findMany({
 			orderBy: {
-				date: 'asc' // 開催日の昇順で取得
+				date: 'asc'
 			}
 		});
 
-		return json(events);
-	} catch (error) {
-		console.error('Error fetching events:', error);
-		return json({ error: 'イベントの取得に失敗しました' }, { status: 500 });
+		// レスポンスデータの整形
+		const formattedEvents = events.map((event) => ({
+			id: event.id,
+			title: event.title,
+			description: event.description,
+			date: event.date.toISOString(),
+			location: event.location,
+			organizer: event.organizer,
+			contact: event.contact,
+			isParticipating: false // 認証機能実装後に修正
+		}));
+
+		return json(formattedEvents);
+	} catch (e) {
+		console.error('Error fetching events:', e);
+		throw error(500, 'Failed to fetch events');
 	}
 };
 

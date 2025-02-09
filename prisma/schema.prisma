@@ -22,6 +22,7 @@ model User {
   snowRemovalRecords SnowRemovalRecord[]
   acCO2Records       ACCO2Record[]
   monthlyTargets     MonthlyTarget[]
+  eventParticipations EventParticipation[]
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 }
@@ -80,13 +81,28 @@ model MonthlyTarget {
 
 // イベント情報のモデル
 model Event {
-  id          Int      @id @default(autoincrement())
-  title       String   // イベントタイトル
-  description String   // イベントの説明
-  date        DateTime // イベント開催日
-  location    String   // 開催場所
-  organizer   String   // 主催者
-  contact     String   // 連絡先
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            Int                 @id @default(autoincrement())
+  title         String              // イベントタイトル
+  description   String              // イベントの説明
+  date          DateTime            // イベント開催日
+  location      String              // 開催場所
+  organizer     String              // 主催者
+  contact       String              // 連絡先
+  participations EventParticipation[]
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+}
+
+// イベント参加情報のモデル
+model EventParticipation {
+  id        Int      @id @default(autoincrement())
+  eventId   Int
+  event     Event    @relation(fields: [eventId], references: [id])
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  status    String   @default("pending") // 参加状態（pending, approved, rejected など）
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([eventId, userId])
 }

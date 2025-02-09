@@ -33,10 +33,24 @@
 		acCO2: 0
 	};
 
+	let participations: Array<{
+		id: number;
+		status: string;
+		user: {
+			username: string;
+			email: string;
+		};
+		event: {
+			title: string;
+			date: string;
+		};
+	}> = [];
+
 	onMount(async () => {
 		await fetchUsers();
 		await fetchEventParticipations();
 		await fetchAllUsersCO2Summary();
+		await fetchParticipations();
 	});
 
 	async function fetchUsers() {
@@ -101,6 +115,38 @@
 		const response = await fetch(`/api/admin/event-participations?month=${currentMonth}`);
 		if (response.ok) {
 			eventParticipations = await response.json();
+		}
+	}
+
+	async function fetchParticipations() {
+		try {
+			const response = await fetch('/api/admin/event-participations');
+			if (!response.ok) throw new Error('Failed to fetch participations');
+			participations = await response.json();
+		} catch (e) {
+			console.error('Error fetching participations:', e);
+		}
+	}
+
+	async function updateParticipationStatus(
+		participationId: number,
+		status: 'approved' | 'rejected'
+	) {
+		try {
+			const response = await fetch('/api/admin/event-participations', {
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({ participationId, status })
+			});
+
+			if (!response.ok) throw new Error('Failed to update status');
+
+			// 更新後のデータを再取得
+			await fetchParticipations();
+		} catch (e) {
+			console.error('Error updating participation status:', e);
 		}
 	}
 
@@ -262,6 +308,151 @@
 					</table>
 				</div>
 			</section>
+
+			<!-- イベント参加申請管理セクション -->
+			<section class="rounded-lg bg-white p-6 shadow-sm">
+				<h2 class="mb-6 text-2xl font-semibold text-gray-800">イベント参加申請管理</h2>
+				<div class="participations-list">
+					{#each participations as participation}
+						<div class="participation-card">
+							<div class="participation-info">
+								<h3>{participation.event.title}</h3>
+								<p>参加者: {participation.user.username} ({participation.user.email})</p>
+								<p>開催日: {new Date(participation.event.date).toLocaleDateString('ja-JP')}</p>
+								<p>
+									ステータス:
+									<span class="status-badge {participation.status}">
+										{#if participation.status === 'pending'}
+											審査中
+										{:else if participation.status === 'approved'}
+											承認済み
+										{:else if participation.status === 'rejected'}
+											却下
+										{/if}
+									</span>
+								</p>
+							</div>
+
+							{#if participation.status === 'pending'}
+								<div class="action-buttons">
+									<button
+										class="approve-button"
+										on:click={() => updateParticipationStatus(participation.id, 'approved')}
+									>
+										承認
+									</button>
+									<button
+										class="reject-button"
+										on:click={() => updateParticipationStatus(participation.id, 'rejected')}
+									>
+										却下
+									</button>
+								</div>
+							{/if}
+						</div>
+					{:else}
+						<p>参加申請はありません。</p>
+					{/each}
+				</div>
+			</section>
 		</div>
 	</div>
 </div>
+
+<style>
+	.admin-container {
+		max-width: 800px;
+		margin: 0 auto;
+		padding: 2rem;
+	}
+
+	h2 {
+		color: var(--deep-blue);
+		margin-bottom: 2rem;
+	}
+
+	.participations-list {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	.participation-card {
+		background: white;
+		border-radius: 8px;
+		padding: 1.5rem;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+	}
+
+	.participation-info {
+		flex: 1;
+	}
+
+	.participation-info h3 {
+		margin: 0 0 0.5rem 0;
+		color: var(--deep-blue);
+	}
+
+	.participation-info p {
+		margin: 0.25rem 0;
+		color: #666;
+	}
+
+	.status-badge {
+		display: inline-block;
+		padding: 0.25rem 0.75rem;
+		border-radius: 1rem;
+		font-size: 0.875rem;
+		font-weight: 500;
+	}
+
+	.status-badge.pending {
+		background-color: #fef3c7;
+		color: #92400e;
+	}
+
+	.status-badge.approved {
+		background-color: #d1fae5;
+		color: #065f46;
+	}
+
+	.status-badge.rejected {
+		background-color: #fee2e2;
+		color: #991b1b;
+	}
+
+	.action-buttons {
+		display: flex;
+		gap: 0.5rem;
+	}
+
+	button {
+		padding: 0.5rem 1rem;
+		border-radius: 4px;
+		border: none;
+		font-weight: 500;
+		cursor: pointer;
+		transition: background-color 0.2s;
+	}
+
+	.approve-button {
+		background-color: #059669;
+		color: white;
+	}
+
+	.approve-button:hover {
+		background-color: #047857;
+	}
+
+	.reject-button {
+		background-color: #dc2626;
+		color: white;
+	}
+
+	.reject-button:hover {
+		background-color: #b91c1c;
+	}
+</style>
